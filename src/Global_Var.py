@@ -5,3 +5,4 @@ class Global_Var:
     ref_point=np.empty((0,))
     obj_val_min=float("inf")
     best_hv=0
+    test=0
