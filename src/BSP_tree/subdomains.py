@@ -12,7 +12,8 @@ import operator
 from gpytorch.settings import cholesky_jitter
 from botorch.acquisition import ExpectedImprovement
 from botorch.optim import optimize_acqf
-import parameters
+import Global_Var
+from Global_Var import *
 from time import time
 import random
 
@@ -52,7 +53,8 @@ class Subdomains():
         for elmt in self._list:
 #            print(elmt._domain)
             with cholesky_jitter(parameters.chol_jitter):
-                candidate, alpha = optimize_acqf(crit, bounds=elmt._domain, q=1, num_restarts=parameters.af_nrestarts, raw_samples=parameters.af_nsamples, options=parameters.af_options)
+                candidate, alpha = optimize_acqf(crit, bounds=elmt._domain, q=1, num_restarts=Global_Var.af_nrestarts, raw_samples=Global_Var.af_nsamples, options=Global_Var.af_options)
+
             elmt._crit = alpha.numpy()
             AF_values.append(alpha.numpy())
             X_next.append(candidate[0].numpy())

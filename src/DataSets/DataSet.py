@@ -34,13 +34,13 @@ class DataBase():
         l_size = min(n_max, self._size)
         
         DB = DataBase(self._obj, l_size)
-        DB._X = torch.zeros(l_size, self._obj._dim, dtype=torch.float64)
+        DB._X = torch.zeros(l_size, self._dim, dtype=torch.float64)
         DB._y = torch.zeros(l_size, 1, dtype=torch.float64)
         # print('center ', center)
         # print('taking ', l_size, ' elements among ', self._size)
         # print(self._X.type(torch.DoubleTensor))
-        # print(center.reshape(1,self._obj._dim).type(torch.DoubleTensor))
-        distance = torch.cdist(self._X.type(torch.DoubleTensor), center.reshape(1,self._obj._dim).type(torch.DoubleTensor), p = 1)
+        # print(center.reshape(1,self._dim).type(torch.DoubleTensor))
+        distance = torch.cdist(self._X.type(torch.DoubleTensor), center.reshape(1,self._dim).type(torch.DoubleTensor), p = 1)
         order = torch.argsort(distance, dim=0)
 
         for i in range(l_size):
@@ -59,9 +59,9 @@ class DataBase():
         l_size = min(n_max, self._size)
         
         DB = DataBase(self._obj, l_size)
-        DB._X = torch.zeros(l_size, self._obj._dim, dtype=torch.float64)
+        DB._X = torch.zeros(l_size, self._dim, dtype=torch.float64)
         DB._y = torch.zeros(l_size, 1, dtype=torch.float64)
-        distance = torch.cdist(self._X.type(torch.DoubleTensor), best.reshape(1,self._obj._dim).type(torch.DoubleTensor), p = 1)
+        distance = torch.cdist(self._X.type(torch.DoubleTensor), best.reshape(1,self._dim).type(torch.DoubleTensor), p = 1)
         order = torch.argsort(distance, dim=0)
 
         for i in range(l_size):

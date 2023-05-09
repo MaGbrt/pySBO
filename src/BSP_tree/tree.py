@@ -139,8 +139,6 @@ class Tree(DataBase):
         for sbdmn in subdomains._list:
             parents._list.append(sbdmn._parent)
             max_lvl = np.max([max_lvl, sbdmn._level])
-        print('max lvl = ', max_lvl)
-
         
         parents._list = parents.sort_list(decreasing = False)
 #        print('Worst parent is ', parents._list[0]._index)

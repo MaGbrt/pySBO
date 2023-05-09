@@ -6,7 +6,7 @@ Created on Fri May  5 11:15:48 2023
 @author: maxime
 
 run with:
-    mpiexec -n 4 python3 run_BSP_EGO.py
+    mpiexec -n 4 python3 SDA_mc_qEGO.py
 """
 from mpi4py import MPI
 import sys
