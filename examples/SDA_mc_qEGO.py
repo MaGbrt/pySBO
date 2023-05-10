@@ -37,8 +37,8 @@ def main():
     # Budget parameters
     dim = 10;
     batch_size = n_proc;
-    budget = 160;
-    t_max = 600;
+    budget = 16;
+    t_max = 60;
     sim_cost = 5 # -1 if real cost
     print('The budget for this run is:', budget, ' cycles.')
     n_init = 96

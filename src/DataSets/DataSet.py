@@ -36,10 +36,6 @@ class DataBase():
         DB = DataBase(self._obj, l_size)
         DB._X = torch.zeros(l_size, self._dim, dtype=torch.float64)
         DB._y = torch.zeros(l_size, 1, dtype=torch.float64)
-        # print('center ', center)
-        # print('taking ', l_size, ' elements among ', self._size)
-        # print(self._X.type(torch.DoubleTensor))
-        # print(center.reshape(1,self._dim).type(torch.DoubleTensor))
         distance = torch.cdist(self._X.type(torch.DoubleTensor), center.reshape(1,self._dim).type(torch.DoubleTensor), p = 1)
         order = torch.argsort(distance, dim=0)
 
@@ -170,11 +166,6 @@ class DataBase():
         self.try_distance()
         
     def try_distance(self, tol = 0.001):
-#        d_mat = pdist(self._X)
-#        print(squareform(d_mat))
-#        print(d_mat)
-#        print('min euclidean distance ', sorted(d_mat)[:10])
-        
         d_mat = pdist(self._X, 'chebyshev')
         if (min(d_mat) < tol):
             print('min chebyshev distance ', sorted(d_mat)[:10])
@@ -198,11 +189,6 @@ class DataBase():
     def add(self, x, y):
         assert(isinstance(x, torch.Tensor))
         assert(isinstance(y, torch.Tensor))
-        # print(x,y)
-        # for y_n in y:
-        #     for y_j in self._y:
-        #         if abs(y_n - y_j) < 0.1:
-        #             print(y_n, ' ', y_j)
         if len(x.shape)==1:
             x=x.reshape(1, self._dim)
         self._X = torch.cat([self._X, x])
@@ -238,12 +224,9 @@ class DataBase():
                 cand_k = sort_X[k]
             cand_ok = False
             for doe in self._X:
-                # print('doe : ', doe.numpy(), '\n cand : ', cand_k)
-                # print('diff = ', doe.numpy() - cand_k)
                 if max(abs(doe-cand_k))>tol:
                     cand_ok = True
                 else :
-#                    print('Remove ', cand_k, ' because to close from \n', doe, '\n chebychev distance is: ', max(abs(doe-cand_k)))
                     cand_ok = False
                     break
             if cand_ok == True:
@@ -251,7 +234,6 @@ class DataBase():
                 index.append(int (k))
             k = k + 1
             
-        #print(index)
         selected_candidates = list(np.array(sort_X)[index])
 
         k = len(index)
@@ -260,9 +242,6 @@ class DataBase():
         while k < batch_size:
             k = k+1
             new_cand = torch.max(torch.zeros(self._dim), torch.min(torch.ones(self._dim), self._X[arg_min] + (torch.rand(self._dim)-0.5)/20))
-            
-#                new_cand = torch.max(torch.zeros(DB._dim), torch.min(torch.ones(DB._dim), DB._X[arg_min] + (torch.rand(DB._dim)-0.5)/20))
-#            print('Adding random perturbation of minimum candidate : \n', new_cand)
             selected_candidates.append(np.array(new_cand))
         return selected_candidates
 
@@ -270,7 +249,6 @@ class DataBase():
         data = np.loadtxt(name, dtype='float', delimiter='\t')
         self._X = torch.tensor(data[:,:self._dim])
         self._y = torch.tensor(data[:,self._dim]).unsqueeze(-1)
-        #print('Try distance in reading routine')
         self.try_distance()
         
     def save_txt(self, name):
