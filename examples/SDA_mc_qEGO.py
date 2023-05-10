@@ -62,7 +62,6 @@ def main():
         t_0 = time()
         t_current = 0.
         while (iter < n_cycle and t_current < t_max):
-        #for iter in range(n_cycle):
             t_start = time()
             # Define and fit model
             # Output data scaled in [0, 1] - min_max_scaling
@@ -89,7 +88,6 @@ def main():
                             model = GP_model(DB_tmp._X, scaled_y)
                             model.custom_fit(Global_Var.small_fit)
                             t_mod += (time() - t_mod0)
-                            #model.fit()
                                 
                         t_ap0 = time()
                         crit = ExpectedImprovement(model._model, torch.min(model._train_Y), maximize = False)
@@ -97,7 +95,6 @@ def main():
                     
                         with gpytorch.settings.cholesky_jitter(Global_Var.chol_jitter):
                             candidate, acq_value = optimize_acqf(crit, bounds=bounds, q=1, num_restarts=Global_Var.af_nrestarts, raw_samples=Global_Var.af_nsamples, options=Global_Var.af_options)
-                        #print('Candidate number ', k, ' is ', candidate)
                         DB_tmp.add(candidate, model.predict(candidate).clone().detach())
                         candidates[k,] = candidate.clone().detach()
                         k = k + 1        
@@ -105,7 +102,6 @@ def main():
                         if(k + 1 < batch_size):
                             with gpytorch.settings.cholesky_jitter(Global_Var.chol_jitter):
                                 candidate, acq_value = optimize_acqf(crit2, bounds=bounds, q=1, num_restarts=Global_Var.af_nrestarts, raw_samples=Global_Var.af_nsamples, options=Global_Var.af_options)
-                            #print('Candidate number ', k, ' is ', candidate)
                             DB_tmp.add(candidate, model.predict(candidate).clone().detach())
                             candidates[k,] = candidate.clone().detach()
                             k = k + 1
@@ -125,7 +121,6 @@ def main():
                 send_to = c%n_proc
                 n_cand[send_to] += 1
     
-            #print('I am proc ', my_rank, 'and I broadcast n_cand ', n_cand)
             ## Broadcast n_cand
             comm.Bcast(n_cand, root = 0)
             for c in range(len(candidates)):
@@ -133,10 +128,8 @@ def main():
                 send_to = c%n_proc
                 if (send_to != 0):
                     comm.send(send_cand, dest = send_to, tag = c)
-                    #print('I m proc', my_rank, ' and I send ', send_cand, ' to proc ', send_to)
             ## Evaluate
             for c in range(int(n_cand[0])):
-                #y_new = DB._obj.evaluate(candidates[n_proc*c].numpy())
                 y_new = DB.eval_f(candidates[n_proc*c].numpy()) # Eval_f also unmap the candidate
                 DB.add(candidates[n_proc*c].unsqueeze(0), torch.tensor(y_new))
     
@@ -145,10 +138,7 @@ def main():
                 get_from = c%n_proc
                 if (get_from != 0):
                     recv_eval = comm.recv(source = get_from, tag = c)
-                    DB.add(candidates[c].unsqueeze(0), torch.tensor(recv_eval))
-    
-                    #print('I m proc', my_rank, ' and I receive ', recv_eval, ' from proc ', get_from)
-        
+                    DB.add(candidates[c].unsqueeze(0), torch.tensor(recv_eval))      
     
             target[iter+1] = torch.min(DB._y).numpy()
             t_end = time()
@@ -171,7 +161,6 @@ def main():
             n_cand = np.zeros(n_proc, dtype = 'i')
             comm.Bcast(n_cand, root = 0)
     
-        #print(DB._X, DB._y)
         print('Final MC_q-EGO value :', end='')
         DB.print_min()
         del DB
@@ -183,10 +172,7 @@ def main():
         for iter in range(n_cycle+1):
             ## Get number of candidates to compute
             n_cand = np.zeros(n_proc, dtype = 'i')
-            #print('I am worker ', my_rank, 'and I wait for the number of candidates I have to compute. ')
-    
             comm.Bcast(n_cand, root = 0)
-            #print('I am worker ', my_rank, 'and I have ', n_cand[my_rank], ' to compute')
     
             if (n_cand.sum() == 0):
                 break
@@ -198,7 +184,6 @@ def main():
                 ## Evaluate
                 y_new = []
                 for c in range(n_cand[my_rank]):
-#                    y_new.append(DB._obj.evaluate(cand[c]))
                     y_new.append(DB_worker.eval_f(cand[c])) # Eval_f also unmap the candidate
     
                 ## Send it back
