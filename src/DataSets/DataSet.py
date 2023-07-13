@@ -2,6 +2,7 @@ import torch
 import numpy as np
 from scipy.spatial.distance import pdist
 from scipy.stats import qmc
+import random
 
 # Data sets of this class are normalize or mapped into the [0,1] hyper-cube.
 class DataBase(): 
@@ -22,7 +23,7 @@ class DataBase():
     def copy(self):
         DB = DataBase(self._obj, self._size)
         DB._X = self._X.clone().detach()
-        DB._y = self._y.clone().detach()
+        DB._y = self._y.clone().detach().flatten()
         if(torch.isnan(self._X).any() == True):
             print('DB copy X ', self._X)
         if(torch.isnan(self._y).any() == True):
@@ -75,12 +76,14 @@ class DataBase():
     def eval_f(self, x): # In BO, the DataSet is mapped into [O,1]^n_dvar, before evaluation the candidate point must be unmapped
         bounds = self._obj.get_bounds()
         x_ = (x * (bounds[1] - bounds[0]) + bounds[0])
-        return self._obj.perform_real_evaluation(x_)
+        y_ = self._obj.perform_real_evaluation(x_)
+        
+        return y_
 
     def create(self, seed = torch.rand(1)):
         torch.manual_seed(seed)
         self._X = torch.rand(self._size, self._dim, dtype=float)
-        self._y = torch.from_numpy(self.eval_f(self._X.numpy())).unsqueeze(-1)
+        self._y = torch.from_numpy(self.eval_f(self._X.numpy()))
         
         if(torch.isnan(self._X).any() == True):
             print('DB create X ', self._X)
@@ -117,7 +120,7 @@ class DataBase():
                 y_new = self.eval_f(candidates[n_proc*c].numpy())
                 if self._X == None :
                     self._X = candidates[n_proc*c].unsqueeze(0)
-                    self._y = torch.tensor(y_new).unsqueeze(0)
+                    self._y = torch.tensor(y_new)
                 else :
                     self.add(candidates[n_proc*c].unsqueeze(0), torch.tensor(y_new))
             
@@ -187,14 +190,18 @@ class DataBase():
         self._size = len(self._X)
         
     def add(self, x, y):
+        # print('DB add y ', y)
+        # print('DB add X ', x)
+
         assert(isinstance(x, torch.Tensor))
         assert(isinstance(y, torch.Tensor))
         if len(x.shape)==1:
             x=x.reshape(1, self._dim)
+
         self._X = torch.cat([self._X, x])
-        self._y = torch.cat([self._y, y.unsqueeze(-1)])
+        self._y = torch.cat([self._y, y])
         self._size = len(self._X)
-        
+#        print('Length of X and y: ', len(self._X), ' ', len(self._y))        
         if(torch.isnan(self._X).any() == True):
             print('DB add X ', self._X)
         if(torch.isnan(self._y).any() == True):
@@ -248,15 +255,28 @@ class DataBase():
     def read_txt(self, name):
         data = np.loadtxt(name, dtype='float', delimiter='\t')
         self._X = torch.tensor(data[:,:self._dim])
-        self._y = torch.tensor(data[:,self._dim]).unsqueeze(-1)
+        self._y = torch.tensor(data[:,self._dim])
         self.try_distance()
         
     def save_txt(self, name):
         save_X = self._X.numpy()
-        save_y = self._y.numpy()
+        save_y = self._y.unsqueeze(1).numpy()
         save = np.concatenate((save_X, save_y), axis = 1)
         np.savetxt(name, save, fmt='%.8e', delimiter='\t', newline='\n', header='')
-        
+
+    def save_as_population(self, name):
+        assert type(name)==str
+        lb = self._obj.get_bounds()[0]
+        ub = self._obj.get_bounds()[1]
+        x_ = self._X.detach().numpy() * (ub - lb) + lb
+        y_ = self._y.detach().numpy()
+        with open(name, 'w') as my_file:
+            my_file.write(str(self._dim) + " 1 1 \n")
+            my_file.write(" ".join(map(str, lb)) + "\n")
+            my_file.write(" ".join(map(str, ub)) + "\n")            
+            for (x, y) in zip(x_, y_):
+                my_file.write(" ".join(map(str, x)) + " " + str(y) + " " + str(1) + "\n")
+
     def min_max_y_scaling(self, Y_test = None):
         if Y_test == None:
             out = (self._y - self._y.min())/(self._y.max() - self._y.min())
@@ -285,4 +305,18 @@ class DataBase():
         x = self._X[i_min]
         min_x = (x * (bounds[1] - bounds[0]) + bounds[0])
         print('Minimum found value is ', self._y[i_min], ' realized at point ', min_x)
+        
+    def get_min(self):
+        i_min = torch.argmin(self._y)
+        x_min = self._X[i_min]
+        y_min = self._y[i_min]
+        return x_min, y_min
+
+    def create_subset(self, n_pts):
+        sub_DB = self.copy()
+        c = random.sample(range(sub_DB._size), n_pts)
+        sub_DB._X = sub_DB._X[c]
+        sub_DB._y = sub_DB._y[c]
+        sub_DB._size = len(sub_DB._y)
+        return sub_DB
         

@@ -34,7 +34,7 @@ class Population:
         __init__ method's input
         
         :param pb: problem
-        :type pb: Problem
+         :type pb: Problem
         """
         assert isinstance(pb, Problem)
 
@@ -108,7 +108,11 @@ class Population:
             
     #-------------sort-------------#
     def sort(self):
-        """Sorts the population according to ascending individuals' objective value (single-objective) or non-dominated and crowded distance sorting (multi-objective)."""
+        """Sorts the population according to ascending individuals' objective value (single-objective) or non-dominated and crowded distance sorting (multi-objective).
+        
+        :returns: permutation of indexes
+        :rtype: np.ndarray
+"""
 
         # mono-objective
         if self.obj_vals.ndim==1:
@@ -121,6 +125,7 @@ class Population:
         self.fitness_modes = self.fitness_modes[idx]
         self.obj_vals = self.obj_vals[idx]
 
+        return idx
         
     #-------------split_in_batches-------------#
     def split_in_batches(self, n_batch):
@@ -144,7 +149,7 @@ class Population:
 
     
     #-------------update_best_sim-------------#
-    def update_best_sim(self, f_best_profile, f_hypervolume=None):
+    def update_best_sim(self, f_best_profile, T_list, f_hypervolume=None):
         """Updates the best individual (single-objective) or the best non-dominated front (multi-objective) and logs.
 
         For mono-objective:
@@ -179,7 +184,9 @@ class Population:
                     Global_Var.dvec_min = tmp_dvec[best_idx]
 
                 with open(f_best_profile, 'a') as my_file:
-                    my_file.write(" ".join(map(str, Global_Var.dvec_min))+" "+str(Global_Var.obj_val_min)+"\n")
+                    my_file.write(" ".join(map(str, Global_Var.dvec_min))+" "+str(Global_Var.obj_val_min)+" "+" ".join(map(str, T_list))+"\n")
+
+                
         # multi-objective
         else:
 
@@ -297,7 +304,7 @@ class Population:
             if self.fitness_modes.shape[1]<2:
                 self.fitness_modes = np.ndarray.flatten(self.fitness_modes)
 
-        assert self.check_integrity()
+        assert Population.check_integrity(self)
 
 
     #-------------save_sim_archive-------------#

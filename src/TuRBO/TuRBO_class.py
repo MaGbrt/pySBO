@@ -9,6 +9,7 @@ import math
 import torch
 import warnings
 import Global_Var
+import numpy as np
 from Global_Var import *
 dtype = torch.double
 
@@ -19,6 +20,7 @@ from botorch.acquisition import ExpectedImprovement
 from botorch.generation import MaxPosteriorSampling
 from botorch.optim import optimize_acqf
 from torch.quasirandom import SobolEngine
+
 
 @dataclass
 class TurboState:
@@ -58,11 +60,41 @@ class TuRBO(TurboState):
         elif self._state.failure_counter == self._state.failure_tolerance:  # Shrink trust region
             self._state.length /= 2.0
             self._state.failure_counter = 0
-    
         self._state.best_value = max(self._state.best_value, max(Y_next).item())
         if self._state.length < self._state.length_min:
             self._state.restart_triggered = True
     
+    def state_to_vec(self):
+        state = np.zeros(11)
+        state[0] = self._state.dim
+        state[1] = self._state.batch_size
+        state[2] = self._state.length
+        state[3] = self._state.length_min
+        state[4] = self._state.length_max
+        state[5] = self._state.failure_counter
+        state[6] = self._state.failure_tolerance
+        state[7] = self._state.success_counter
+        state[8] = self._state.success_tolerance
+        state[9] = self._state.best_value
+        state[10] = self._state.restart_triggered
+
+        return state
+
+    def vec_to_state(self, state):
+        self._state.dim = int(state[0])
+        self._state.batch_size = int(state[1])
+        self._state.length = float(state[2])
+        self._state.length_min = float(state[3])
+        self._state.length_max = float(state[4])
+        self._state.failure_counter = int(state[5])
+        self._state.failure_tolerance = int(state[6])
+        self._state.success_counter = int(state[7])
+        self._state.success_tolerance = int(state[8])
+        self._state.best_value = float(state[9])
+        self._state.restart_triggered = bool(state[10])
+        #print('State of turbo: ', state)
+        return None
+
     def generate_batch(self,
         mod,  # GP model
         batch_size,
@@ -113,7 +145,7 @@ class TuRBO(TurboState):
     
         elif acqf == "ei":
             with cholesky_jitter(Global_Var.chol_jitter):
-                ei = qExpectedImprovement(model, Y.max(), maximize=True)
+                ei = qExpectedImprovement(model, Y.max())
                 X_next, acq_value = optimize_acqf(
                     ei,
                     bounds=torch.stack([tr_lb, tr_ub]),
@@ -123,16 +155,6 @@ class TuRBO(TurboState):
                     options=Global_Var.af_options
                     )
                 
-            # print('TR is; \n', tr_lb,'\n', tr_ub,'\n', x_center)
-        elif acqf == "ei2": # NOT RELEVANT ANYMORE ?
-            warnings.warn('This function might not be relevant anymore')
-            if (batch_size > 1):
-                ei = qExpectedImprovement(model, Y.max(), maximize=True)
-                X_next, acq_value = optimize_acqf(ei, bounds=torch.stack([tr_lb, tr_ub]), q=batch_size, num_restarts=num_restarts, raw_samples=raw_samples)
-            else :
-                ei = ExpectedImprovement(model, Y.max(), maximize=True)
-                X_next, acq_value = optimize_acqf(ei, bounds=torch.stack([tr_lb, tr_ub]), q=batch_size, num_restarts=num_restarts, raw_samples=raw_samples)
-            
         elif acqf == "KB_ei":
             print('Remains to be implemented')    
         return X_next
