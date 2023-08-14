@@ -32,7 +32,7 @@ class Composition_AS(Single_Objective):
     #----------------------------------------#
     
     #-------------perform_real_evaluation-------------#
-    def perform_real_evaluation(self, candidates):
+    def perform_real_evaluation(self, c):
         """Objective function.
 
         :param candidates: candidate decision vectors
@@ -40,6 +40,8 @@ class Composition_AS(Single_Objective):
         :return: objective values
         :rtype: np.ndarray
         """
+        candidates = np.copy(c)
+
 #       CEC2014 id 6 : Weierstrass function        
         c_wei = candidates
         obj_vals2 = self._f2.perform_real_evaluation(c_wei)

@@ -77,8 +77,17 @@ class DataBase():
         bounds = self._obj.get_bounds()
         x_ = (x * (bounds[1] - bounds[0]) + bounds[0])
         y_ = self._obj.perform_real_evaluation(x_)
-        
         return y_
+    
+    def my_unmap(self, x):
+        bounds = self._obj.get_bounds()
+        x_ = (x * (bounds[1] - bounds[0]) + bounds[0])
+        return x_
+    
+    def my_map(self, x):
+        bounds = self._obj.get_bounds()
+        x_ = (x - bounds[0])/(bounds[1] - bounds[0])
+        return x_
 
     def create(self, seed = torch.rand(1)):
         torch.manual_seed(seed)
@@ -256,6 +265,9 @@ class DataBase():
         data = np.loadtxt(name, dtype='float', delimiter='\t')
         self._X = torch.tensor(data[:,:self._dim])
         self._y = torch.tensor(data[:,self._dim])
+        if (self._size != len(self._y)):
+            print('Warning: The initial DoE has ', len(self._y), ' points whereas DB is declared with ', self._size, ' initial points.')
+        self._size = len(self._y)
         self.try_distance()
         
     def save_txt(self, name):

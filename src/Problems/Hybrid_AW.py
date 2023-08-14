@@ -48,15 +48,16 @@ class Hybrid_AW(Single_Objective):
         :return: objective values
         :rtype: np.ndarray
         """
-        assert self.is_feasible(candidates)
+        assert self.is_feasible(candidates), 'Failed to perform real evaluation'
+        c = np.copy(candidates)
         
-        if candidates.ndim==1:
-            candidates = np.array([candidates])
+        if c.ndim==1:
+            c = np.array([c])
 
         M_p = np.load('../src/Problems/M_p.npy')# matrice de permutation
         k = 0
-        for cand in candidates:
-            candidates[k] = M_p @ cand + 3.45
+        for cand in c:
+            c[k] = M_p @ cand + 3.45
             k+=1
             
         alpine_mask = np.array([1, 0, 1, 1, 0, 1, 0, 1, 1, 1], bool)
@@ -66,10 +67,10 @@ class Hybrid_AW(Single_Objective):
         rm_alp = a[~alpine_mask]
         rm_sch = a[~schwefel_mask]
         
-        c_alp = np.delete(candidates, rm_alp, 1)
+        c_alp = np.delete(c, rm_alp, 1)
         c_alp = (c_alp + 100)/20 # Scale into [0, 10]^D, default for Alpine2, instead of [-100, 100] for CEC2015
 
-        c_sch = np.delete(candidates, rm_sch, 1)
+        c_sch = np.delete(c, rm_sch, 1)
 
         obj_vals1 = np.prod(np.sqrt(c_alp)*np.sin(c_alp), axis=1)        
         obj_vals2 = 418.9828872724338*len(rm_alp)-np.einsum('ij,ij->i', c_sch, np.sin(np.sqrt(np.abs(c_sch))))
@@ -106,6 +107,8 @@ class Hybrid_AW(Single_Objective):
             lower_bounds=self.get_bounds()[0,:]
             upper_bounds=self.get_bounds()[1,:]
             res=(lower_bounds<=candidates).all() and (candidates<=upper_bounds).all()
+        if res != True : 
+            print('NO')
         return res
     #-------------plot-------------#
     def plot(self):

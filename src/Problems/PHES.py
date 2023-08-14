@@ -67,7 +67,8 @@ class PHES(Single_Objective):
             p = np.array([p])
 
         else:
-            p = np.zeros(candidates.ndim)
+            p = np.zeros(len(candidates))
+            #print('I have ', len(candidates), ' candidates to evaluate')
             k = 0
             for cand in candidates:
                 DAM_d = cand[:24]
@@ -78,7 +79,7 @@ class PHES(Single_Objective):
                 k += 1
                 
         end = time()
-        print('Evaluation done, returns: ', p, ' in ', end-start, ' s.')
+#        print('Evaluation done, returns: ', p, ' in ', end-start, ' s.')
         return -p
 
 

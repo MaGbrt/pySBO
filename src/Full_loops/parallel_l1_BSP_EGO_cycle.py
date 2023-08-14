@@ -42,6 +42,7 @@ def par_l1_BSP_EGO_run(DB, n_cycle, t_max, batch_size, tree_depth, n_learn, id_r
         
         time_per_cycle = np.zeros((n_cycle, 5))
         print('Best initial known target is: ', torch.min(DB._y).numpy())
+        print('len of DB to send: ', len(DB._X))
         iter = 0
         t_0 = time()
         t_current = 0.
@@ -52,7 +53,7 @@ def par_l1_BSP_EGO_run(DB, n_cycle, t_max, batch_size, tree_depth, n_learn, id_r
 
 #        for iter in range(n_cycle):
             t_start = time()
-#            print('Master broadcast DB to all')
+            print('Master broadcast DB to all')
             comm.Bcast(DB._X.numpy(), root = 0)
             comm.Bcast(DB._y.numpy(), root = 0)
 
@@ -215,7 +216,6 @@ def par_l1_BSP_EGO_run(DB, n_cycle, t_max, batch_size, tree_depth, n_learn, id_r
             
             print("Alg. lBSP-EGO, cycle ", iter, " took --- %s seconds ---" % (t_end - t_start))
             print('Best known target is: ',  DB._y[arg_min])
-            DB.print_min()
             if(Global_Var.sim_cost == -1): # real cost
                 t_current = time() - t_0
             else:
@@ -241,11 +241,12 @@ def par_l1_BSP_EGO_run(DB, n_cycle, t_max, batch_size, tree_depth, n_learn, id_r
             
             if(keep_going.sum() == 1):
                 tmp_X = np.ndarray((init_size + iter * batch_size, dim))
+                print('len of tmp_X: ', len(tmp_X))
                 tmp_y = np.ndarray((init_size + iter * batch_size, 1))
                 comm.Bcast(tmp_X, root = 0)
                 comm.Bcast(tmp_y, root = 0)
     
-                #print('I (proc ', my_rank, ') received the DB')
+                print('I (proc ', my_rank, ') received the DB')
                 DB.set_Xy(tmp_X, tmp_y)
                 #print('DB_X from ', my_rank, '\n', DB._X)
                 #print('DB_y from ', my_rank, '\n', DB._y)

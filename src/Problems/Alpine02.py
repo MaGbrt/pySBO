@@ -1,6 +1,8 @@
 import numpy as np
 from Problems.Problem import Problem
 from Problems.Single_Objective import Single_Objective
+import matplotlib.pyplot as plt
+from matplotlib import cm
 
 class Alpine02(Single_Objective):
     """Class for the single-objective Alpine02 problem.
@@ -24,7 +26,7 @@ class Alpine02(Single_Objective):
         return "Alpine02 problem "+str(self.n_dvar)+" decision variables "+str(self.n_obj)+" objective"
 
     #-------------evaluate-------------#
-    def perform_real_evaluation(self, candidates):
+    def perform_real_evaluation(self, c):
         """Objective function.
 
         :param candidates: candidate decision vectors
@@ -32,6 +34,8 @@ class Alpine02(Single_Objective):
         :return: objective values
         :rtype: np.ndarray
         """
+        candidates = np.copy(c)
+
         assert self.is_feasible(candidates)
         
         if candidates.ndim==1:

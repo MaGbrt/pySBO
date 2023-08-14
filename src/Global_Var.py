@@ -26,7 +26,7 @@ class Global_Var:
     max_cholesky_size = float("inf")  # Always use Cholesky
     chol_jitter = 1e-3
     
-    threshold = 420
+    threshold = 320
     
     if debug:
         # Budget allocated to the surrogate model fitting

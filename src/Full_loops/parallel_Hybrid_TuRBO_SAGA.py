@@ -180,7 +180,7 @@ def par_Hybrid_TuRBO_SAGA_run(DB, n_cycle, t_max, batch_size, threshold, id_run 
                 print('Files already exist')
 
             TMP_STORAGE="./tmp/my_exp"
-            SUFFIX="_Hybrid_TuRBO_SAGA_pop_"+str(n_proc)+"_"
+            SUFFIX="_Hybrid_TuRBO_SAGA_pop_"+id_run+"_"
             F_SIM_ARCHIVE="/sim_archive"+SUFFIX+".csv"
             F_BEST_PROFILE="/best_profile"+SUFFIX+".csv"
             F_INIT_POP= id_run # "Hybrid_TuRBO_SAGA_pop.csv" #  "./init_pop/init_pop_"+sys.argv[1]+"_"+sys.argv[2]+".csv"
@@ -296,14 +296,13 @@ def par_Hybrid_TuRBO_SAGA_run(DB, n_cycle, t_max, batch_size, threshold, id_run 
                 to_simulate.obj_vals = np.zeros((np.sum(nb_sim_per_proc),))
                 y_tmp = p.perform_real_evaluation(to_simulate.dvec[0:nb_sim_per_proc[0]])
                 to_simulate.obj_vals[0:nb_sim_per_proc[0]] = y_tmp
-                # print('Master simulates: ', torch.tensor(to_simulate.dvec[0:nb_sim_per_proc[0]]), torch.tensor(y_tmp))
-                DB.add(torch.tensor(to_simulate.dvec[0:nb_sim_per_proc[0]]), torch.tensor(y_tmp))
+#                print('Master simulates: ', torch.tensor(to_simulate.dvec[0:nb_sim_per_proc[0]]), torch.tensor(y_tmp))
                 
                 for i in range(1,n_proc): # receiving from workers
                     to_simulate.obj_vals[np.sum(nb_sim_per_proc[:i]):np.sum(nb_sim_per_proc[:i+1])] = comm.recv(source=i, tag=12)
                 to_simulate.dvec = to_simulate.dvec[:np.sum(nb_sim_per_proc)]
-                # print('Master receives from workers: ', to_simulate.dvec, to_simulate.obj_vals)
-                DB.add(torch.tensor(to_simulate.dvec), torch.tensor(to_simulate.obj_vals))
+ #               print('Master receives from workers: ', to_simulate.dvec, to_simulate.obj_vals)
+                DB.add(torch.tensor(DB.my_map(to_simulate.dvec)), torch.tensor(to_simulate.obj_vals))
                 to_simulate.fitness_modes = True*np.ones(to_simulate.obj_vals.shape, dtype=bool)
                 to_simulate.save_sim_archive(TMP_STORAGE+F_SIM_ARCHIVE)
         

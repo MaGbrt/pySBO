@@ -74,6 +74,10 @@ class Problem(ABC):
         if type(candidates) is np.ndarray:
             if candidates.ndim==1:
                 res=(candidates.size==self.__n_dvar)
+                if res == False:
+                    print('Problem with dimension')
             else:
                 res=(candidates.shape[1]==self.__n_dvar)
+                if res == False:
+                    print('Problem with dimension')
         return res
