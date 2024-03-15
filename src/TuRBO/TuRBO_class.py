@@ -20,6 +20,7 @@ from botorch.acquisition import ExpectedImprovement
 from botorch.generation import MaxPosteriorSampling
 from botorch.optim import optimize_acqf
 from torch.quasirandom import SobolEngine
+from botorch.acquisition import UpperConfidenceBound
 
 
 @dataclass
@@ -62,7 +63,9 @@ class TuRBO(TurboState):
             self._state.failure_counter = 0
         self._state.best_value = max(self._state.best_value, max(Y_next).item())
         if self._state.length < self._state.length_min:
+            print('\n \n Trigger restart \n \n')
             self._state.restart_triggered = True
+            self._state.length = 0.8
     
     def state_to_vec(self):
         state = np.zeros(11)
@@ -106,7 +109,7 @@ class TuRBO(TurboState):
         X = mod._train_X
         Y = mod._train_Y
         model = mod._model
-        assert acqf in ("ts", "ei", "ei2", "KB_ei")
+        assert acqf in ("ts", "ei", "KB_ei", 'lcb')
         assert X.min() >= 0.0 and X.max() <= 1.0 and torch.all(torch.isfinite(Y))
         if n_candidates is None:
             n_candidates = min(5000, max(2000, 200 * X.shape[-1]))
@@ -148,6 +151,17 @@ class TuRBO(TurboState):
                 ei = qExpectedImprovement(model, Y.max())
                 X_next, acq_value = optimize_acqf(
                     ei,
+                    bounds=torch.stack([tr_lb, tr_ub]),
+                    q=batch_size,
+                    num_restarts=Global_Var.af_nrestarts, 
+                    raw_samples=Global_Var.af_nsamples, 
+                    options=Global_Var.af_options
+                    )
+        elif acqf == "lcb":
+            with cholesky_jitter(Global_Var.chol_jitter):
+                crit = UpperConfidenceBound(model, beta=0.1, maximize = True)
+                X_next, acq_value = optimize_acqf(
+                    crit,
                     bounds=torch.stack([tr_lb, tr_ub]),
                     q=batch_size,
                     num_restarts=Global_Var.af_nrestarts, 
