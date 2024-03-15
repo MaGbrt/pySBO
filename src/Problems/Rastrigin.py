@@ -63,8 +63,8 @@ class Rastrigin(Single_Objective):
         """
 
         res=np.ones((2,self.n_dvar))
-        res[0,:]*=-5.12
-        res[1,:]*=5.12
+        res[0,:]*=-4.12
+        res[1,:]*=7.12
         return res
 
     #-------------is_feasible-------------#
