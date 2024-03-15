@@ -3,6 +3,8 @@ import numpy as np
 from scipy.spatial.distance import pdist
 from scipy.stats import qmc
 import random
+from time import time
+import os
 
 # Data sets of this class are normalize or mapped into the [0,1] hyper-cube.
 class DataBase(): 
@@ -169,12 +171,16 @@ class DataBase():
         sample = sampler.random(n=self._size)
 
         self._X = torch.tensor(sample)
-        self._y = torch.from_numpy(self.eval_f(self._X.numpy())).unsqueeze(-1)
+      
+        t = time()
+        self._y = torch.from_numpy(self.eval_f(self._X.numpy()))
+        print('DB create in ', time() - t, ' s.')
+        
         if(torch.isnan(self._X).any() == True):
             print('DB create X ', self._X)
         if(torch.isnan(self._y).any() == True):
             print('DB create y ', self._y)
-        print('Try distance in creation')
+#        print('Try distance in creation')
         self.try_distance()
         
     def try_distance(self, tol = 0.001):
@@ -271,6 +277,7 @@ class DataBase():
         self.try_distance()
         
     def save_txt(self, name):
+        print('Saving Data Set into ', name)
         save_X = self._X.numpy()
         save_y = self._y.unsqueeze(1).numpy()
         save = np.concatenate((save_X, save_y), axis = 1)
@@ -282,7 +289,11 @@ class DataBase():
         ub = self._obj.get_bounds()[1]
         x_ = self._X.detach().numpy() * (ub - lb) + lb
         y_ = self._y.detach().numpy()
-        with open(name, 'w') as my_file:
+        try: 
+            os.mkdir("./Save_as_pop")
+        except: 
+            print('Save_as_pop folder already exists')
+        with open('./Save_as_pop/Pop_'+name+'.csv', 'w') as my_file:
             my_file.write(str(self._dim) + " 1 1 \n")
             my_file.write(" ".join(map(str, lb)) + "\n")
             my_file.write(" ".join(map(str, ub)) + "\n")            
