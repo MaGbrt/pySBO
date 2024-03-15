@@ -241,12 +241,12 @@ def par_l1_BSP_EGO_run(DB, n_cycle, t_max, batch_size, tree_depth, n_learn, id_r
             
             if(keep_going.sum() == 1):
                 tmp_X = np.ndarray((init_size + iter * batch_size, dim))
-                print('len of tmp_X: ', len(tmp_X))
+#                print('len of tmp_X: ', len(tmp_X))
                 tmp_y = np.ndarray((init_size + iter * batch_size, 1))
                 comm.Bcast(tmp_X, root = 0)
                 comm.Bcast(tmp_y, root = 0)
     
-                print('I (proc ', my_rank, ') received the DB')
+ #               print('I (proc ', my_rank, ') received the DB')
                 DB.set_Xy(tmp_X, tmp_y)
                 #print('DB_X from ', my_rank, '\n', DB._X)
                 #print('DB_y from ', my_rank, '\n', DB._y)
@@ -1298,12 +1298,12 @@ def par_l11_BSP_EGO_run(DB, n_cycle, t_max, batch_size, tree_depth, n_learn, id_
 def par_l2_BSP_EGO_run(DB, n_cycle, t_max, batch_size, tree_depth, n_learn, id_run, comm):
     my_rank = comm.Get_rank()
     n_proc = comm.Get_size()
-    tol = 0.01# tolerance/min distance
+    tol = 0.000001# tolerance/min distance
 
     dim = DB._dim
     if my_rank == 0:
         n_init_leaves = pow(2, tree_depth)
-        max_leaves = n_init_leaves
+        max_leaves = batch_size
         target = np.zeros((1, n_cycle+1))
         target[0, 0] = torch.min(DB._y).numpy()
 
@@ -1330,7 +1330,19 @@ def par_l2_BSP_EGO_run(DB, n_cycle, t_max, batch_size, tree_depth, n_learn, id_r
             subdomains = T.get_leaves() # Returns an element of class Subdomains
             n_leaves = subdomains.get_size()
             print('Tree is built with ', n_leaves, ' leaves.')
-            subdomains.select(max_leaves)
+            a = np.sqrt(t_current/t_max)
+            if (torch.rand(1)>a):
+                crit_leaves = 'af' # Favors exploration
+                split_crit = '_crit'
+                if torch.rand(1)<0.2:
+                    split_crit = '_index'
+            else:
+                crit_leaves = 'value' # Favors exploitation
+                split_crit = '_best'
+                if torch.rand(1)<0.1:
+                    split_crit = '_index'
+            print(a, 'Using ', crit_leaves, ' and ', split_crit)
+            subdomains.select_leaves(max_leaves, crit_leaves)
             n_leaves = subdomains.get_size()
             T.check_volume()
 
@@ -1361,10 +1373,13 @@ def par_l2_BSP_EGO_run(DB, n_cycle, t_max, batch_size, tree_depth, n_learn, id_r
             candidates = np.zeros((my_tasks, DB._dim + 1))
             t_mod = 0
             t_ap_sum = 0
+            best_y_s = []
             for t in range(my_tasks):
                 bounds = b_list[t]
                 center = (bounds[0]+bounds[1])*0.5
                 DB_temp = DB.copy_from_center(n_learn, center)
+                _, tmp_best_y = DB_temp.get_min()
+                best_y_s.append(tmp_best_y) 
                 scaled_y = DB_temp.min_max_y_scaling()
 #                scaled_y = DB_temp.normal_y_scaling()
 
@@ -1419,21 +1434,26 @@ def par_l2_BSP_EGO_run(DB, n_cycle, t_max, batch_size, tree_depth, n_learn, id_r
                 get_from = c%n_proc
                 if (get_from == 0):
                     cand = candidates[cpt,:]
+                    best_y = best_y_s[cpt]
                     cpt += 1
                 else :
                     cand = comm.recv(source = get_from, tag = c)
-
+                    best_y = comm.recv(source = get_from, tag = c + 1000)
 #                print('Get cand ', cand)
                 candidates_list.append(cand[0:dim])
 #                print('Setting -crit if LCB ', -cand[dim], ' leaf ', subdomains._list[c]._index)
                 acq_value_list.append(-cand[dim])
                 subdomains._list[c]._crit = acq_value_list[c]
+                subdomains._list[c]._best = best_y
             
-            # Sort the candidates to choose which ones are being eval_fd
-            try :
-                sort_X = [el for _, el in sorted(zip(acq_value_list, candidates_list), reverse = True)]
-            except :
-                print('Failed to sort list')
+            # Sort the candidates to choose which ones are being evaluated
+            if n_leaves > batch_size:
+                try :
+                    sort_X = [el for _, el in sorted(zip(acq_value_list, candidates_list), reverse = True)]
+                except :
+                    print('Failed to sort list')
+                    sort_X = candidates_list
+            else :
                 sort_X = candidates_list
             # print('AF values\n', acq_value_list)
             # print('Selected candidates\n', sort_X)
@@ -1484,7 +1504,7 @@ def par_l2_BSP_EGO_run(DB, n_cycle, t_max, batch_size, tree_depth, n_learn, id_r
             arg_min = torch.argmin(DB._y)
 
             # Update the tree
-            T.update_split_only(subdomains)
+            T.update_split_only(subdomains, split_crit)
             
             print("Alg. l2BSP-EGO, cycle ", iter, " took --- %s seconds ---" % (t_end - t_start))
             print('Best known target is: ',  DB._y[arg_min])
@@ -1540,10 +1560,14 @@ def par_l2_BSP_EGO_run(DB, n_cycle, t_max, batch_size, tree_depth, n_learn, id_r
                 # 3. Perform AP for each subdomain
                 candidates = np.zeros((my_tasks, DB._dim + 1))
      #           print('DB X and y', DB._X, DB._y)
+                best_y_s = []
                 for t in range(my_tasks):
                     b_temp = b_list[t]
                     center = (b_temp[0]+b_temp[1])*0.5
                     DB_temp = DB.copy_from_center(n_learn, center)
+                    _, tmp_best_y = DB_temp.get_min()
+                    best_y_s.append(tmp_best_y) 
+                     
                     scaled_y = DB_temp.min_max_y_scaling()
                     #scaled_y = DB_temp.normal_y_scaling()
                     if(torch.isnan(scaled_y).any() == True):
@@ -1582,7 +1606,8 @@ def par_l2_BSP_EGO_run(DB, n_cycle, t_max, batch_size, tree_depth, n_learn, id_r
                 # 4. Send back the found candidates to master
                 for t in range(my_tasks):
                     comm.send(candidates[t,], dest = 0, tag = my_rank + t * n_proc)
-    
+                    comm.send(best_y_s[t], dest = 0, tag = my_rank + t * n_proc + 1000)
+
                 # 5. Get number of candidates to compute
                 n_cand = np.zeros(n_proc, dtype = 'i')
                 #print('I am worker ', my_rank, 'and I wait for the number of candidates I have to compute. ')

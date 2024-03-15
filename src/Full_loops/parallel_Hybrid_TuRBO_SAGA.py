@@ -16,7 +16,6 @@ from Global_Var import *
 
 from Surrogates.GPyTorch_models import GP_model
 from TuRBO.TuRBO_class import TuRBO
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 dtype = torch.double
     
 import os
@@ -145,12 +144,12 @@ def par_Hybrid_TuRBO_SAGA_run(DB, n_cycle, t_max, batch_size, threshold, id_run 
             comm.Bcast(n_cand, root = 0)
             print('Saving as population of ', DB._size, ' individuals.')
             print('Threshold: ', threshold)
-            DB.save_as_population(id_run)
+            DB.save_as_population('Hybrid' + id_run)
         DB.print_min()
         
         
         # Switch to SAGA SaaF
-        if my_rank==0:
+        if t_current < t_max :
             # Search arguments
             POP_SIZE = 32
             N_CHLD = 128 # number of children issued per generation
@@ -162,7 +161,7 @@ def par_Hybrid_TuRBO_SAGA_run(DB, n_cycle, t_max, batch_size, threshold, id_run 
             budget = Global_Var.budget # number of cycles afordable 
             N_GEN = int((budget-itr+1)*n_proc/N_SIM)
             print('Maximum number of generations: ', N_GEN)
-            TIME_BUDGET = Global_Var.max_time
+            TIME_BUDGET = t_max
             T_AP=0
             T_train=0
         
@@ -183,7 +182,7 @@ def par_Hybrid_TuRBO_SAGA_run(DB, n_cycle, t_max, batch_size, threshold, id_run 
             SUFFIX="_Hybrid_TuRBO_SAGA_pop_"+id_run+"_"
             F_SIM_ARCHIVE="/sim_archive"+SUFFIX+".csv"
             F_BEST_PROFILE="/best_profile"+SUFFIX+".csv"
-            F_INIT_POP= id_run # "Hybrid_TuRBO_SAGA_pop.csv" #  "./init_pop/init_pop_"+sys.argv[1]+"_"+sys.argv[2]+".csv"
+            F_INIT_POP= './Save_as_pop/Pop_Hybrid'+id_run+'.csv'  # "Hybrid_TuRBO_SAGA_pop.csv" #  "./init_pop/init_pop_"+sys.argv[1]+"_"+sys.argv[2]+".csv"
             F_TRAIN_LOG="/training_log"+SUFFIX+".csv"
             F_TRAINED_MODEL="/trained_model"+SUFFIX
         
@@ -340,20 +339,21 @@ def par_Hybrid_TuRBO_SAGA_run(DB, n_cycle, t_max, batch_size, threshold, id_run 
                 time_per_cycle[itr, 2] = t_train_end - t_start_cyc # t_ap + t_model
                 time_per_cycle[itr, 3] = t_eval_ # t_sim
                 time_per_cycle[itr, 4] = t_end_cyc - t_start_cyc # t_tot
+                target[0, itr+1] = torch.min(DB._y).numpy()
+
                 itr += 1
                 if (itr > n_cycle or t_current > t_max):
                     print('Time is up, SAGA SaaF is done.')
                     DB.print_min()
                     break
             #----------------------End Generation loop----------------------#
-        
+        else:
+            print('No time for SAGA')
+        # Stop workers
+        for i in range(1,n_proc):
+            comm.send(-1, dest=i, tag=10)
             
-            # Stop workers
-            for i in range(1,n_proc):
-                comm.send(-1, dest=i, tag=10)
-        
         return target, time_per_cycle
-
     else:
         for itr in range(n_cycle + 1):
             ## Get number of candidates to compute
