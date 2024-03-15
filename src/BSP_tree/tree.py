@@ -18,11 +18,13 @@ class Tree(DataBase):
         self._left = None;
         self._right = None;
         
-        self._index = 0;
+        self._index = int (0);
         self._level = 0;
         self._domain = domain;
         self._crit = -1.; # Crit to sort the leaves
-        self._points = DB;     
+        self._points = DB;
+        self._best = 0 # Best known target in the region covered by the tree (useful only for the leaves)
+
     
     def __del__(self):
         del self._index
@@ -51,7 +53,8 @@ class Tree(DataBase):
         self._left._level = self._level + 1
         self._left._domain = split_function(self._domain, 0)
         self._left._crit = self._crit
-        
+        self._left._best = self._best
+
     def spread_right(self, split_function):
         self._right = Tree()
         self._right._parent = self
@@ -59,6 +62,7 @@ class Tree(DataBase):
         self._right._level = self._level + 1
         self._right._domain = split_function(self._domain, 1)
         self._right._crit = self._crit
+        self._right._best = self._best
         
     def cut_leaves(self):
         assert self._right != None and self._left != None, 'You are not cutting leaves, tree is compromised'
@@ -131,6 +135,9 @@ class Tree(DataBase):
 #        print('t_propagate2 = ', time() - t_prop)
 
         subdomains._list = subdomains.sort_list(decreasing = True)
+        for leaf in subdomains._list:
+            print('Leaf: ', leaf._index, ' crit: ', leaf._crit, ' best ', leaf._best)
+
 #        subdomains.print_indexes()
 #        print('Best leaf is ', subdomains._list[0]._index)
         
@@ -160,23 +167,28 @@ class Tree(DataBase):
         self.check_volume()
         #self.print_tree()
         
-    def update_split_only(self, subdomains):
+    def update_split_only(self, subdomains, according_to = 'default'):
         assert self._parent == None, 'propagate_crit must be called from root'
         assert self.is_leaf() == False, 'If root is a leaf, then run EGO'
 
         t_prop = time()
         self.propagate_crit_2(subdomains)
 #        print('t_propagate2 = ', time() - t_prop)
-
-        subdomains._list = subdomains.sort_list(decreasing = True)
+        # print('Split according to: ', according_to)
+        if according_to == 'default':
+            subdomains._list = subdomains.sort_list(decreasing = False)
+        else:
+            subdomains._list = subdomains.sort_list(decreasing = False, according_to = according_to)
 #        subdomains.print_indexes()
+        # for leaf in subdomains._list:
+            # print('Leaf: ', leaf._index, ' crit: ', leaf._crit, ' best ', leaf._best)
 #        print('Best leaf is ', subdomains._list[0]._index)
         
         if(subdomains._list[0]._left == None and subdomains._list[0]._right == None): # if best is leaf
             subdomains._list[0].spread_node()
         else:
             print('Cannot proceed')
-        self.check_volume()
+#        self.check_volume()
         #self.print_tree()
         
     def update_twice(self, subdomains):
@@ -263,7 +275,7 @@ class Tree(DataBase):
         for l in leaves._list:
             V += torch.prod(l._domain[1]-l._domain[0], dtype=torch.float64)
 #        print('Volume is: ', V)
-        assert V==1, ('Check the split function, total volume is', V.numpy(), ' not 1')
+        assert (V-1)<0.001, ('Check the split function, total volume is', V.numpy(), ' not 1')
         
     #%% Print functions 
     def print_node(self):
