@@ -58,7 +58,7 @@ class MACE:
         num_guess = guess_x.shape[0]
         # print('Guess x: ', guess_x)
         def obj(x):
-            lcb, ei, pi = model.MACE_obj(np.array([x]))
+            ei, pi, lcb = model.MACE_obj(np.array([x]))
             log_ei      = np.log(1e-40 + ei)
             log_pi      = np.log(1e-40 + pi)
             return [lcb, -1*log_ei, -1*log_pi]
